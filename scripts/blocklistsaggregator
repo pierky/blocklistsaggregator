@@ -1,0 +1,282 @@
+#!/usr/bin/env python
+
+# Copyright (C) 2016 Pier Carlo Chiodi
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import argparse
+import json
+import logging
+from logging.config import fileConfig
+
+from netaddr import IPNetwork
+
+from pierky.blocklistsaggregator.lists import BlockLists, get_bl_from_id
+from pierky.blocklistsaggregator.formatters import Formatters, \
+                                                   get_formatter_from_id
+from pierky.blocklistsaggregator.version import __version__, COPYRIGHT_YEAR
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
+
+def validate_prefix(prefix):
+    try:
+        ip = IPNetwork(prefix)
+        return ip
+    except:
+        raise argparse.ArgumentTypeError(
+            "Invalid IP prefix: {}".format(prefix)
+        )
+
+
+def add_prefix(args, ipnetwork_or_string, entries):
+    try:
+        if ipnetwork_or_string is IPNetwork:
+            prefix = ipnetwork_or_string
+        else:
+            prefix = IPNetwork(ipnetwork_or_string)
+
+        if str(prefix) in entries["plaintext"]:
+            return "duplicate"
+
+        if prefix.version == 4 and args.v6_only:
+            return "filtered"
+        if prefix.version == 6 and args.v4_only:
+            return "filtered"
+
+        if args.only_global_unicast_addresses:
+            if not prefix.is_unicast() or prefix.is_private():
+                return "filtered"
+
+        if prefix.version == 4:
+            if prefix.prefixlen < args.exclude_ipv4_shorter_than:
+                return "filtered"
+        elif prefix.version == 6:
+            if prefix.prefixlen < args.exclude_ipv6_shorter_than:
+                return "filtered"
+
+        for excluded_prefix in args.exclude:
+            if prefix in excluded_prefix or prefix == excluded_prefix:
+                return "filtered"
+
+        entries["v{}".format(prefix.version)].append(prefix)
+        entries["plaintext"].append(str(prefix))
+    except Exception as e:
+        logger.info("Error processing entry '{}', skipping it - {}".format(
+            str(e), ipnetwork_or_string
+        ))
+        return "error"
+
+    return "ok"
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="IP Block Lists Aggregator v{}".format(__version__),
+        epilog="Copyright (c) {} - Pier Carlo Chiodi - "
+               "https://pierky.com".format(COPYRIGHT_YEAR))
+
+    parser.add_argument(
+        "-i", "--input",
+        help="JSON file to read entries from (instead of fetching them "
+             "from online block lists feeds). Use '-' to read from stdin.",
+        type=argparse.FileType("r")
+    )
+
+    parser.add_argument(
+        "-o", "--output",
+        help="Output file. Default: '-' (stdout).",
+        type=argparse.FileType("w"),
+        default="-"
+    )
+
+    output_formats = []
+    for formatter_class in Formatters:
+        output_formats.append(formatter_class.ID)
+
+    parser.add_argument(
+        "-f", "--output-format",
+        help="Output format. Default: 'lines'.",
+        choices=output_formats,
+        default="lines"
+    )
+
+    parser.add_argument(
+        "--logging-config-file",
+        help="Logging configuration file, in Python fileConfig() format ("
+             "https://docs.python.org/2/library/logging.config.html"
+             "#configuration-file-format)"
+    )
+
+    # ----------------------------------------
+    group = parser.add_argument_group(
+        title="Source lists and filters"
+    )
+
+    list_ids = [bl_class.ID for bl_class in BlockLists]
+    group.add_argument(
+        "--lists",
+        help="Block lists to use. One or more of the following: {}. "
+             "Default: all.".format(", ".join(list_ids)),
+        nargs="*",
+        choices=list_ids,
+        default=list_ids,
+        dest="lists",
+        metavar="LIST_ID"
+    )
+
+    group.add_argument(
+        "-4", "--ipv4-only",
+        help="Only IPv4 entries will be processed.",
+        action="store_true",
+        dest="v4_only"
+    )
+
+    group.add_argument(
+        "-6", "--ipv6-only",
+        help="Only IPv6 entries will be processed.",
+        action="store_true",
+        dest="v6_only"
+    )
+
+    group.add_argument(
+        "--exclude-ipv4-shorter-than",
+        help="Exclude IPv4 prefixes whose length is shorter than X. "
+             "Default: 0.",
+        default=0,
+        type=int,
+        metavar="X"
+    )
+
+    group.add_argument(
+        "--exclude-ipv6-shorter-than",
+        help="Exclude IPv6 prefixes whose length is shorter than X. "
+             "Default: 0.",
+        default=0,
+        type=int,
+        metavar="X"
+    )
+
+    group.add_argument(
+        "--exclude",
+        help="Exclude block list entries whose prefix falls whithin one of "
+             "the prefixes that are listed here. Default: FE80::/10.",
+        nargs="*",
+        default=[IPNetwork("FE80::/10")],
+        type=validate_prefix
+    )
+
+    group.add_argument(
+        "--only-global-unicast-addresses",
+        help="Exclude any IP address/prefix that is not unicast and global. "
+             "Default: False.",
+        action="store_true",
+        default=False
+    )
+
+    for formatter_class in Formatters:
+        formatter_class.add_args(parser)
+
+    args = parser.parse_args()
+
+    if args.logging_config_file:
+        try:
+            fileConfig(args.logging_config_file)
+        except Exception as e:
+            logger.error(
+                "Error processing the --logging-config-file - {}".format(
+                    str(e)
+                )
+            )
+            return
+
+    formatter_class = get_formatter_from_id(args.output_format)
+    formatter = formatter_class(args)
+
+    if not formatter.init():
+        return
+
+    # v4 and v6: lists of IPNetwork() objects
+    # plaintext: lists of string representation of the same prefixes which are
+    #            added to v4 and v6; used to speed up the lookup that avoids
+    #            duplicated entries in add_prefix()
+    entries = {
+        "v4": [],
+        "v6": [],
+        "plaintext": []
+    }
+
+    stats = {
+        "ok": 0,
+        "duplicate": 0,
+        "filtered": 0,
+        "error": 0
+    }
+
+    if args.input:
+        logger.info("Reading entries from input file...")
+
+        try:
+            plaintext_entries = json.loads(args.input.read())
+        except Exception as e:
+            logger.error("Error while loading input file - {}".format(str(e)))
+            return
+
+        logger.info("Processing entries...")
+
+        for v4v6 in (4, 6):
+            for entry in plaintext_entries["v{}".format(v4v6)]:
+                stats[add_prefix(args, entry, entries)] += 1
+    else:
+        for bl_class_id in args.lists:
+            blocklist_class = get_bl_from_id(bl_class_id)
+
+            logger.info("Downloading and parsing {}...".format(
+                blocklist_class.NAME
+            ))
+
+            bl = blocklist_class()
+
+            try:
+                bl.load()
+                for prefix in bl.entries:
+                    stats[add_prefix(args, prefix, entries)] += 1
+            except Exception as e:
+                logger.warning(
+                    "Error while processing {}, skipping it - {}".format(
+                        bl.NAME, str(e)
+                    )
+                )
+
+    logger.info(
+        "Stats: {} ok, {} duplicate, {} filtered, {} errors - "
+        "total: {} entries".format(
+            stats["ok"], stats["duplicate"], stats["filtered"], stats["error"],
+            stats["ok"] + stats["duplicate"] + stats["filtered"] + \
+                stats["error"]
+        )
+    )
+    if stats["error"] > 0:
+        logger.warning("Can't process one or more block list entries")
+
+    try:
+        formatter.emit(entries, args.output)
+    except Exception as e:
+        logger.error("Error while writing output ('{}') - {}".format(
+            args.output_format, str(e)
+        ))
+        return
+
+main()
