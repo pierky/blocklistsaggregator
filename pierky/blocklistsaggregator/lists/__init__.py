@@ -26,3 +26,11 @@ BlockLists = [RW_IPBL_List,
 
 def get_bl_from_id(id):
     return [bl_class for bl_class in BlockLists if bl_class.ID == id][0]
+
+
+def get_bl_names(bl_ids):
+    ret = []
+    for bl_class in BlockLists:
+        if bl_class.ID in bl_ids:
+            ret.append(bl_class.NAME)
+    return ret

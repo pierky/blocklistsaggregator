@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .base_formatter import Formatter
+from ..lists import get_bl_names
 
 
 class MikrotikFormatter(Formatter):
@@ -55,6 +56,13 @@ class MikrotikFormatter(Formatter):
                     self.address_list_name
                 ))
             for entry in entries["v{}".format(v4v6)]:
-                output.write("add list={} address=""{}""\n".format(
-                    self.address_list_name, str(entry)
-                ))
+                output.write(
+                    """add list={} address="{}" comment="{}"\n""".format(
+                        self.address_list_name, str(entry),
+                        ", ".join(
+                            get_bl_names(
+                                entries["unique"][str(entry)]["bl_ids"]
+                            )
+                        )
+                    )
+                )

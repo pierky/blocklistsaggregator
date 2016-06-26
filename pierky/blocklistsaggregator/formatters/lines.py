@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .base_formatter import Formatter
+from ..lists import get_bl_names
 
 
 class LinesFormatter(Formatter):
@@ -74,6 +75,10 @@ class LinesFormatter(Formatter):
     {version}     IP version, 4 or 6.
 
     {ip_ipv6}     'ip' string in case of an IPv6 entry, 'ipv6' otherwise.
+
+    {bl_ids}      List of blocklist IDs where the prefix has been found.
+
+    {bl_names}    List of blocklist names where the prefix has been found.
     """)
             return False
 
@@ -84,6 +89,8 @@ class LinesFormatter(Formatter):
         try:
             for v4v6 in (4, 6):
                 for entry in entries["v{}".format(v4v6)]:
+                    bl_ids = entries["unique"][str(entry)]["bl_ids"]
+
                     output.write(tpl.format(
                         prefix=str(entry),
                         ip=str(entry.ip),
@@ -93,7 +100,9 @@ class LinesFormatter(Formatter):
                         hostmask=str(entry.hostmask),
                         broadcast=str(entry.broadcast),
                         version=str(entry.version),
-                        ip_ipv6="ip" if entry.version == 4 else "ipv6"
+                        ip_ipv6="ip" if entry.version == 4 else "ipv6",
+                        bl_ids=", ".join(bl_ids),
+                        bl_names=", ".join(get_bl_names(bl_ids))
                     ))
         except KeyError as e:
             raise ValueError("Unknown macro: {}".format(str(e)))

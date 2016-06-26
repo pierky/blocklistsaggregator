@@ -41,14 +41,18 @@ def validate_prefix(prefix):
         )
 
 
-def add_prefix(args, ipnetwork_or_string, entries):
+def add_prefix(args, ipnetwork_or_string, bl_ids, entries):
     try:
         if ipnetwork_or_string is IPNetwork:
             prefix = ipnetwork_or_string
         else:
             prefix = IPNetwork(ipnetwork_or_string)
 
-        if str(prefix) in entries["plaintext"]:
+        if str(prefix) in entries["unique"]:
+            if isinstance(bl_ids, list):
+                entries["unique"][str(prefix)]["bl_ids"].update(bl_ids)
+            else:
+                entries["unique"][str(prefix)]["bl_ids"].add(bl_ids)
             return "duplicate"
 
         if prefix.version == 4 and args.v6_only:
@@ -72,7 +76,13 @@ def add_prefix(args, ipnetwork_or_string, entries):
                 return "filtered"
 
         entries["v{}".format(prefix.version)].append(prefix)
-        entries["plaintext"].append(str(prefix))
+        entries["unique"][str(prefix)] = {
+            "bl_ids": set()
+        }
+        if isinstance(bl_ids, list):
+            entries["unique"][str(prefix)]["bl_ids"] = set(bl_ids)
+        else:
+            entries["unique"][str(prefix)]["bl_ids"].add(bl_ids)
     except Exception as e:
         logger.info("Error processing entry '{}', skipping it - {}".format(
             str(e), ipnetwork_or_string
@@ -209,13 +219,15 @@ def main():
         return
 
     # v4 and v6: lists of IPNetwork() objects
-    # plaintext: lists of string representation of the same prefixes which are
+    # unique:    dict of string representation of the same prefixes which are
     #            added to v4 and v6; used to speed up the lookup that avoids
     #            duplicated entries in add_prefix()
+    #            format:
+    #               "<prefix">: { "bl_ids": set("<bl_id_1>", "<bl_id_N>") }
     entries = {
         "v4": [],
         "v6": [],
-        "plaintext": []
+        "unique": {}
     }
 
     stats = {
@@ -229,7 +241,7 @@ def main():
         logger.info("Reading entries from input file...")
 
         try:
-            plaintext_entries = json.loads(args.input.read())
+            from_file = json.loads(args.input.read())
         except Exception as e:
             logger.error("Error while loading input file - {}".format(str(e)))
             return
@@ -237,8 +249,9 @@ def main():
         logger.info("Processing entries...")
 
         for v4v6 in (4, 6):
-            for entry in plaintext_entries["v{}".format(v4v6)]:
-                stats[add_prefix(args, entry, entries)] += 1
+            for entry in from_file["v{}".format(v4v6)]:
+                bl_ids = from_file["v{}".format(v4v6)][entry]["bl_ids"]
+                stats[add_prefix(args, entry, bl_ids, entries)] += 1
     else:
         for bl_class_id in args.lists:
             blocklist_class = get_bl_from_id(bl_class_id)
@@ -252,7 +265,7 @@ def main():
             try:
                 bl.load()
                 for prefix in bl.entries:
-                    stats[add_prefix(args, prefix, entries)] += 1
+                    stats[add_prefix(args, prefix, bl_class_id, entries)] += 1
             except Exception as e:
                 logger.warning(
                     "Error while processing {}, skipping it - {}".format(

@@ -22,9 +22,16 @@ class JSONFormatter(Formatter):
 
     ID = "json"
 
+    def _get_entries(self, entries, ip_ver):
+        res = {}
+        for e in entries[ip_ver]:
+            s = str(e)
+            res[s] = {"bl_ids": list(entries["unique"][s]["bl_ids"])}
+        return res
+
     def emit(self, entries, output):
         results = {
-            "v4": [str(e) for e in entries["v4"]],
-            "v6": [str(e) for e in entries["v6"]]
+            "v4": self._get_entries(entries, "v4"),
+            "v6": self._get_entries(entries, "v6")
         }
         json.dump(results, output)
