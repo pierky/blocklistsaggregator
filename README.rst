@@ -75,6 +75,7 @@ The following block lists are currenly implemented:
 
 - rw_ipbl, `Ransomware Tracker RW_IPBL <https://ransomwaretracker.abuse.ch/blocklist/>`_
 - drop, `Spamhaus DROP <https://www.spamhaus.org/drop/>`_
+- drop_v6, `Spamhaus DROPv6 <https://www.spamhaus.org/drop/>`_
 - edrop, `Spamhaus EDROP <https://www.spamhaus.org/drop/>`_
 - feodo_badip, `Feodo BadIP <https://feodotracker.abuse.ch/blocklist/>`_
 - feodo_ip, `Feodo IP <https://feodotracker.abuse.ch/blocklist/>`_

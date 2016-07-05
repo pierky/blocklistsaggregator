@@ -13,13 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .spamhaus import Spamhaus_DROP_List, Spamhaus_EDROP_List
+from .spamhaus import Spamhaus_DROP_List, Spamhaus_DROPv6_List, \
+                      Spamhaus_EDROP_List
 from .abuse_ch import Feodo_BadIP_List, Feodo_IP_List, Palevo_CC_List, \
                       Zeus_IP_List, RW_IPBL_List
 from .bambenek import Bambenek_C2_List
 
 BlockLists = [RW_IPBL_List,
-              Spamhaus_DROP_List, Spamhaus_EDROP_List,
+              Spamhaus_DROP_List, Spamhaus_DROPv6_List, Spamhaus_EDROP_List,
               Feodo_BadIP_List, Feodo_IP_List, Palevo_CC_List, Zeus_IP_List,
               Bambenek_C2_List]
 

@@ -32,6 +32,12 @@ class Spamhaus_DROP_List(Spamhaus_List):
     NAME = "Spamhaus DROP"
 
 
+class Spamhaus_DROPv6_List(Spamhaus_List):
+    ID = "drop_v6"
+    URL = "https://www.spamhaus.org/drop/dropv6.txt"
+    NAME = "Spamhaus DROPv6"
+
+
 class Spamhaus_EDROP_List(Spamhaus_List):
     ID = "edrop"
     URL = "https://www.spamhaus.org/drop/edrop.lasso"

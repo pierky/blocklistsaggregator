@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.4.0
+-----
+
+- Add `drop_v6` list (`Spamhaus DROPv6 <https://www.spamhaus.org/drop/>`_).
+
 0.3.0
 -----
 
