@@ -19,6 +19,7 @@ import argparse
 import json
 import logging
 from logging.config import fileConfig
+import os.path
 
 from netaddr import IPNetwork
 
@@ -130,6 +131,18 @@ def main():
              "#configuration-file-format)"
     )
 
+    parser.add_argument(
+        "--lists-storage-dir",
+        help="Save parsed lists into the DIR directory.",
+        metavar="DIR"
+    )
+    parser.add_argument(
+        "--recover-from-file",
+        help="In case of failure while processing new lists load entries "
+             "from previously saved files. Require --lists-storage-dir.",
+        action="store_true"
+    )
+
     # ----------------------------------------
     group = parser.add_argument_group(
         title="Source lists and filters"
@@ -212,6 +225,23 @@ def main():
             )
             return
 
+    if args.lists_storage_dir:
+        if not os.path.isdir(args.lists_storage_dir):
+            logger.error(
+                "The directory {} does not exist.".format(
+                    args.lists_storage_dir
+                )
+            )
+            return
+
+    if args.recover_from_file:
+        if not args.lists_storage_dir:
+            logger.error(
+                "The --recover-from-file argument requires the "
+                "--lists-storage-dir."
+            )
+            return
+
     formatter_class = get_formatter_from_id(args.output_format)
     formatter = formatter_class(args)
 
@@ -264,14 +294,46 @@ def main():
 
             try:
                 bl.load()
-                for prefix in bl.entries:
-                    stats[add_prefix(args, prefix, bl_class_id, entries)] += 1
+                if args.lists_storage_dir:
+                    path = os.path.join(args.lists_storage_dir, bl_class_id)
+                    try:
+                        bl.save_to_file(path)
+                    except Exception as e:
+                        logger.warning(
+                            "Error while saving {} into {} - {}".format(
+                                bl.NAME, path, str(e)
+                            )
+                        )
             except Exception as e:
-                logger.warning(
-                    "Error while processing {}, skipping it - {}".format(
-                        bl.NAME, str(e)
+                path = None
+                if args.recover_from_file:
+                    path = os.path.join(args.lists_storage_dir, bl_class_id)
+                if path and os.path.isfile(path):
+                    logger.warning(
+                        "Error while processing {} - {} - "
+                        "recovering from file {}".format(
+                            bl.NAME, str(e), path
+                        )
                     )
-                )
+                    try:
+                        bl.load_from_file(path)
+                    except Exception as e:
+                        logger.warning(
+                            "Error while recovering {} from "
+                            "file {} - {} - skipping it".format(
+                                bl.NAME, path, str(e)
+                            )
+                        )
+                else:
+                    logger.warning(
+                        "Error while processing {} - {} - "
+                        "skipping it".format(
+                            bl.NAME, str(e)
+                        )
+                    )
+
+            for prefix in bl.entries:
+                stats[add_prefix(args, prefix, bl_class_id, entries)] += 1
 
     logger.info(
         "Stats: {} ok, {} duplicate, {} filtered, {} errors - "

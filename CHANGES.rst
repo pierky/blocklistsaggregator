@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.3.0
+-----
+
+- Add `--lists-storage-dir` and `--recover-from-file` arguments to save lists into files and reuse them in case of failure of next updates.
+
 0.2.0
 -----
 

@@ -104,3 +104,16 @@ class BlockList(object):
                     str(e)
                 )
             )
+
+    def load_from_file(self, path):
+        with open(path, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            if not line:
+                continue
+            self.entries.append(IPNetwork(line))
+
+    def save_to_file(self, path):
+        with open(path, "w") as f:
+            for entry in self.entries:
+                f.write("{}\n".format(str(entry)))
