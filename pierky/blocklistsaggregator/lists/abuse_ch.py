@@ -19,7 +19,7 @@ from .base_list import BlockList
 class Feodo_List(BlockList):
 
     def _verify(self):
-        last_entry = self.raw_entries[-1]
+        last_entry = [line for line in self.raw_entries if line][-1]
         if last_entry.startswith("# END"):
             cnt = last_entry.split("(")[1].split(" ")[0]
 
@@ -60,7 +60,7 @@ class RW_IPBL_List(BlockList):
     NAME = "Ransomware tracker RW_IPBL"
 
     def _verify(self):
-        last_entry = self.raw_entries[-1]
+        last_entry = [line for line in self.raw_entries if line][-1]
         if last_entry[0] == self.COMMENT:
             if "entries" in last_entry:
                 cnt = last_entry.split(" ")[1]
@@ -70,6 +70,21 @@ class RW_IPBL_List(BlockList):
                             last_entry
                         )
                     )
+
+                # It seems that RW_IPBL is having some issues with the
+                # number of entries reported in the last line.
+                # If an empty line is found it's counted as an entry, so
+                # last line's counter reports a wrong number.
+                # Trying to mitigate this behaviour.
+                empty_entry_found = False
+                for entry in self.raw_entries:
+                    entry = entry.strip()
+                    if not entry:
+                        empty_entry_found = True
+                        break
+
+                if empty_entry_found:
+                    cnt = int(cnt) - 1
 
                 if int(cnt) != len(self.entries):
                     raise ValueError(

@@ -69,7 +69,7 @@ class BlockList(object):
             raise NotImplementedError()
         response = urlopen(self.URL)
         self.raw_data = response.read().decode("utf-8")
-        self.raw_entries = [line for line in self.raw_data.split("\n") if line]
+        self.raw_entries = self.raw_data.split("\n")
 
     def parse(self):
         for entry in self.raw_entries:
@@ -93,7 +93,7 @@ class BlockList(object):
             if not self.raw_data:
                 raise ValueError("No data")
 
-            if len(self.raw_entries) == 0:
+            if len([_ for _ in self.raw_entries if _]) == 0:
                 raise ValueError("Empty list of raw entries")
 
             self._verify()
