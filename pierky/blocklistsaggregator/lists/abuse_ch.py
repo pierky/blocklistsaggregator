@@ -76,10 +76,33 @@ class RW_IPBL_List(BlockList):
                 # If an empty line is found it's counted as an entry, so
                 # last line's counter reports a wrong number.
                 # Trying to mitigate this behaviour.
+
+                # raw data format / block_idx
+                #
+                # ############################################ block_idx = 1
+                # # comments                                   block_idx = 2
+                # ############################################ block_idx = 3
+                # entries                                      block_idx = 4
+                # # xxx entries                                block_idx = 5
+
                 empty_entry_found = False
+                block_idx = 0
                 for entry in self.raw_entries:
                     entry = entry.strip()
-                    if not entry:
+                    if entry.startswith(self.COMMENT * 10):
+                        if block_idx == 0:
+                            block_idx = 1
+                        elif block_idx == 2:
+                            block_idx = 3
+                    elif entry.startswith(self.COMMENT):
+                        if "entries" not in entry and block_idx == 1:
+                            block_idx = 2
+                        elif "entries" in entry and block_idx == 4:
+                            block_idx = 5
+                    elif block_idx == 3:
+                        block_idx = 4
+
+                    if not entry and block_idx == 4:
                         empty_entry_found = True
                         break
 
