@@ -30,6 +30,7 @@ class BlockList(object):
     URL = None
     NAME = None
     COMMENT = "#"
+    USE_BY_DEFAULT = True
 
     def __init__(self):
         self.raw_data = None

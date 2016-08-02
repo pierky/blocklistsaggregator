@@ -16,10 +16,10 @@
 from .spamhaus import Spamhaus_DROP_List, Spamhaus_DROPv6_List, \
                       Spamhaus_EDROP_List
 from .abuse_ch import Feodo_BadIP_List, Feodo_IP_List, Palevo_CC_List, \
-                      Zeus_IP_List, RW_IPBL_List
+                      Zeus_IP_List, RW_IPBL_List, RW_DomBL_List, RW_URLBL_List
 from .bambenek import Bambenek_C2_List
 
-BlockLists = [RW_IPBL_List,
+BlockLists = [RW_IPBL_List, RW_DomBL_List, RW_URLBL_List,
               Spamhaus_DROP_List, Spamhaus_DROPv6_List, Spamhaus_EDROP_List,
               Feodo_BadIP_List, Feodo_IP_List, Palevo_CC_List, Zeus_IP_List,
               Bambenek_C2_List]

@@ -55,7 +55,8 @@ setup(
     maintainer_email="pierky@pierky.com",
 
     install_requires=[
-        "netaddr"
+        "netaddr",
+        "six"
     ],
 
     scripts=["scripts/blocklistsaggregator"],

@@ -139,25 +139,58 @@ def main():
     parser.add_argument(
         "--recover-from-file",
         help="In case of failure while processing new lists load entries "
-             "from previously saved files. Require --lists-storage-dir.",
+             "from previously saved files. Requires --lists-storage-dir.",
         action="store_true"
     )
 
     # ----------------------------------------
     group = parser.add_argument_group(
-        title="Source lists and filters"
+        title="Source lists"
     )
 
     list_ids = [bl_class.ID for bl_class in BlockLists]
+    use_by_default_list_ids = [bl_class.ID
+                               for bl_class in BlockLists
+                               if bl_class.USE_BY_DEFAULT]
     group.add_argument(
         "--lists",
         help="Block lists to use. One or more of the following: {}. "
-             "Default: all.".format(", ".join(list_ids)),
+             "Default: all except {}.".format(
+                 ", ".join(list_ids),
+                 ", ".join([bl_id
+                            for bl_id in list_ids
+                            if bl_id not in use_by_default_list_ids])
+            ),
         nargs="*",
         choices=list_ids,
-        default=list_ids,
+        default=use_by_default_list_ids,
         dest="lists",
         metavar="LIST_ID"
+    )
+
+    group.add_argument(
+        "--lists-include",
+        help="Add the given LIST_ID to the block lists set "
+             "expected for --lists.",
+        nargs="*",
+        choices=list_ids,
+        dest="lists_include",
+        metavar="LIST_ID"
+    )
+
+    group.add_argument(
+        "--lists-exclude",
+        help="Remove the given LIST_ID from the block lists set "
+             "expected for --lists.",
+        nargs="*",
+        choices=list_ids,
+        dest="lists_exclude",
+        metavar="LIST_ID"
+    )
+
+    # ----------------------------------------
+    group = parser.add_argument_group(
+        title="Filters"
     )
 
     group.add_argument(
@@ -248,6 +281,23 @@ def main():
     if not formatter.init():
         return
 
+    lists = args.lists
+
+    if args.lists_include:
+        for bl_id in args.lists_include:
+            if bl_id not in lists:
+                lists.append(bl_id)
+
+    if args.lists_exclude:
+        for bl_id in args.lists_exclude:
+            if bl_id in lists:
+                lists.remove(bl_id)
+
+    if not lists:
+        logger.error("The given --lists, --lists-include and --lists-exclude "
+                     "argumets result into an empty set of block lists.")
+        return
+
     # v4 and v6: lists of IPNetwork() objects
     # unique:    dict of string representation of the same prefixes which are
     #            added to v4 and v6; used to speed up the lookup that avoids
@@ -283,7 +333,7 @@ def main():
                 bl_ids = from_file["v{}".format(v4v6)][entry]["bl_ids"]
                 stats[add_prefix(args, entry, bl_ids, entries)] += 1
     else:
-        for bl_class_id in args.lists:
+        for bl_class_id in lists:
             blocklist_class = get_bl_from_id(bl_class_id)
 
             logger.info("Downloading and parsing {}...".format(
