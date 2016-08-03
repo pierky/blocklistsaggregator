@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.5.0
+-----
+
+- Better empty lines detection for RW_IPBL.
+- Add `--lists-include` and `--lists-exclude` arguments.
+- Add `rw_dombl` and `rw_urlbl` lists (`Ransomware Tracker RW_DOMBL and RW_URLBL <https://ransomwaretracker.abuse.ch/>`_).
+
+  Warning: the program extracts the domain names reported into these lists to resolve the IP addresses and uses them for the output. This may result in an overblocking behaviour because these filters should be applied with a more granular level than layer-3 addresses. These lists are not used by default unless explicitly given via the command line `--lists` or `--lists-include` arguments.
+
+0.4.1
+-----
+
+- Fix issue with RW_IPBL entries counter.
+
+  It seems that RW_IPBL is having some issues with the number of entries reported in the last line.
+  If an empty line is found it's counted as an entry, so last line's counter reports a wrong number.
+  Trying to mitigate this behaviour.
+
 0.4.0
 -----
 

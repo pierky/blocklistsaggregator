@@ -63,6 +63,12 @@ It's a command line tool, the ``--help`` is your friend! Some examples are worth
 
           $ blocklistsaggregator.py --lists drop -4 --lines-format "ip route {network} {netmask} null0"
 
+- Download standard block lists and output them in a Mikrotik address-list format into ``addMalwareIPs.rsc``; save lists into ``/tmp`` and, in case of failure during one of the next executions, reuse them to build the output:
+
+  .. code:: bash
+
+          $ blocklistsaggregator --output addMalwareIPs.rsc --output-format mikrotik --mikrotik-address-list-name addressListMalware --lists-storage-dir /tmp/ --recover-from-file
+
 Logging
 +++++++
 
@@ -74,6 +80,8 @@ Source block lists
 The following block lists are currenly implemented:
 
 - rw_ipbl, `Ransomware Tracker RW_IPBL <https://ransomwaretracker.abuse.ch/blocklist/>`_
+- rw_dombl, `Ransomware Tracker RW_DOMBL <https://ransomwaretracker.abuse.ch/blocklist/>`_ (please read below)
+- rw_urlbl, `Ransomware Tracker RW_URLBL <https://ransomwaretracker.abuse.ch/blocklist/>`_ (please read below)
 - drop, `Spamhaus DROP <https://www.spamhaus.org/drop/>`_
 - drop_v6, `Spamhaus DROPv6 <https://www.spamhaus.org/drop/>`_
 - edrop, `Spamhaus EDROP <https://www.spamhaus.org/drop/>`_
@@ -82,6 +90,8 @@ The following block lists are currenly implemented:
 - palevo, `Palevo C&C <https://palevotracker.abuse.ch/blocklists.php>`_
 - zeus, `ZeuS <https://zeustracker.abuse.ch/blocklist.php>`_
 - bambenek_c2, `Bambenek Consulting C2 master feed <http://osint.bambenekconsulting.com/feeds/>`_
+
+**Warning for RW_DOMBL and RW_URLBL**: the program extracts the domain names reported into these lists to resolve the IP addresses and uses them for the output. This may result in an overblocking behaviour because these filters should be applied with a more granular level than layer-3 addresses. These lists are not used by default unless explicitly given via the command line `--lists` or `--lists-include` arguments.
 
 A list of block-lists can be found on http://iplists.firehol.org/
 
