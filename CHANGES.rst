@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5.1
+-----
+
+- Fix a bug in the packaging system.
+
 0.5.0
 -----
 

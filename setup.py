@@ -41,6 +41,7 @@ setup(
     version=__version__,
 
     packages=["pierky", "pierky.blocklistsaggregator"],
+    namespace_packages=["pierky"],
     include_package_data=True,
 
     license="GPLv3",
